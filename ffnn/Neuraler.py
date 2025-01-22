@@ -1,3 +1,5 @@
+import copy
+import math
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -8,6 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib.pyplot as plt
 
+from EarlyStopper import EarlyStopper
 
 seed = 1
 torch.manual_seed(seed)
@@ -23,7 +26,7 @@ class FFNN(nn.Module):
             nn.ReLU(),
             nn.Linear(200, 100),
             nn.ReLU(),
-            nn.Linear(100, 1)
+            nn.Linear(100, 1),
         )
 
     def forward(self, x):
@@ -42,31 +45,106 @@ class Neuraler:
         y_train_scaled = self.y_scaler.fit_transform(y_train)
         y_test_scaled = self.y_scaler.transform(y_test)
 
-        self.X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32).to(device)
-        self.y_train_tensor = torch.tensor(y_train_scaled, dtype=torch.float32).to(device)
+        days = 365
+
+        # last year as validation set
+        X_val = X_train_scaled[self.season_start - days : self.season_start]
+        X_train_scaled = X_train_scaled[: self.season_start - days]
+        y_val = y_train_scaled[self.season_start - days : self.season_start]
+        y_train_scaled = y_train_scaled[: self.season_start - days]
+
+        self.X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32).to(
+            device
+        )
+        self.y_train_tensor = torch.tensor(y_train_scaled, dtype=torch.float32).to(
+            device
+        )
+        self.X_val_tensor = torch.tensor(X_val, dtype=torch.float32).to(device)
+        self.y_val_tensor = torch.tensor(y_val, dtype=torch.float32).to(device)
         self.X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32).to(device)
         self.y_test_tensor = torch.tensor(y_test_scaled, dtype=torch.float32).to(device)
 
-        self.train_loader = DataLoader(
-            TensorDataset(self.X_train_tensor, self.y_train_tensor),
-            batch_size=batch_size,
-            shuffle=True
-        )
-        self.test_loader = DataLoader(
-            TensorDataset(self.X_test_tensor, self.y_test_tensor),
-            batch_size=batch_size,
-            shuffle=False
-        )
+        self.batch_size = batch_size
 
         input_dim = X_train.shape[1]
         self.model = FFNN(input_dim).to(device)
-    
-    def fit(self, num_epochs=200, plot_training=True, plot_results=True):
+
+    def fit(
+        self,
+        num_epochs=200,
+        plot_training=True,
+        plot_results=True,
+        stop_early=True,
+        warmup=20,
+        lr=0.001,
+        tune=False,
+    ):
+        self.train_loader = DataLoader(
+            TensorDataset(self.X_train_tensor, self.y_train_tensor),
+            batch_size=self.batch_size,
+            shuffle=True,
+        )
+
+        stop_epoch = None
+
+        og_model_state = copy.deepcopy(self.model.state_dict())
+
+        # added _train to wrap around the training loop to allow for easy evaluation
+        # of validation loss for hyperparameter tuning
+        if tune:
+            rates = np.linspace(0.0001, 0.01, 100)
+            best_loss = math.inf
+            lr = None
+            for rate in rates:
+                _, val_losses, _ = self._train(
+                    num_epochs, stop_early, warmup, lr=rate
+                )
+                # reset model weights
+                self.model.load_state_dict(og_model_state)
+                print("Learning rate:", rate)
+                print("Loss:", val_losses[-1])
+                if val_losses[-1] < best_loss:
+                    best_loss = val_losses[-1]
+                    lr = rate
+        
+            print("The best learning rate is", lr)
+        
+        train_losses, val_losses, stop_epoch = self._train(
+            num_epochs, stop_early, warmup, lr
+        )
+
+        if not stop_epoch:
+            stop_epoch = num_epochs
+
+        if plot_training:
+            self._plot_training(stop_epoch, train_losses, val_losses)
+
+        self.model.eval()
+        with torch.no_grad():
+            y_pred_tensor = self.model(self.X_test_tensor)
+
+        y_pred_scaled = y_pred_tensor.cpu().numpy()
+        y_pred = self.y_scaler.inverse_transform(y_pred_scaled)
+        y_actual = self.y_scaler.inverse_transform(self.y_test_tensor.cpu().numpy())
+
+        mae = mean_absolute_error(y_actual, y_pred)
+        mse = mean_squared_error(y_actual, y_pred)
+        correlation = np.corrcoef(y_actual.flatten(), y_pred.flatten())[0, 1]
+
+        print(f"Mean Absolute Error: {mae:.2f}")
+        print(f"Mean Squared Error: {mse:.2f}")
+        print(f"Correlation: {correlation:.2f}")
+
+        if plot_results:
+            self._plot_results(y_actual, y_pred)
+
+    def _train(self, num_epochs, stop_early, warmup, lr):
         criterion = nn.L1Loss()
-        optimizer = optim.Adam(self.model.parameters(), lr=0.001)
+        optimizer = optim.Adam(self.model.parameters(), lr=lr)
+        early_stopper = EarlyStopper()
 
         train_losses = []
-        test_losses = []
+        val_losses = []
         for epoch in range(num_epochs):
             self.model.train()
             epoch_train_loss = 0
@@ -81,56 +159,45 @@ class Neuraler:
             train_losses.append(epoch_train_loss / len(self.train_loader))
 
             self.model.eval()
-            epoch_test_loss = 0
             with torch.no_grad():
-                for batch_X, batch_y in self.test_loader:
-                    outputs = self.model(batch_X)
-                    loss = criterion(outputs, batch_y)
-                    epoch_test_loss += loss.item()
-            test_losses.append(epoch_test_loss / len(self.test_loader))
+                val_pred = self.model(self.X_val_tensor)
+                val_loss = criterion(val_pred, self.y_val_tensor)
+                val_losses.append(val_loss.item())
 
             if (epoch + 1) % 20 == 0:
-                print(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_losses[-1]:.4f}, Test Loss: {test_losses[-1]:.4f}')
+                print(
+                    f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_losses[-1]:.4f}, Val Loss: {val_losses[-1]:.4f}"
+                )
 
-        if plot_training:
-            self._plot_training(num_epochs, train_losses, test_losses)
-        
-        self.model.eval()
-        with torch.no_grad():
-            y_pred_tensor =  self.model( self.X_test_tensor)
+            if stop_early and (epoch + 1) > warmup:
+                early_stopper(val_loss, self.model)
+                if early_stopper.early_stop:
+                    stop_epoch = epoch + 1 - early_stopper.patience
+                    print(f"Early stopping at epoch {stop_epoch}")
+                    train_losses = train_losses[:len(train_losses) - early_stopper.patience]
+                    val_losses = val_losses[:len(val_losses) - early_stopper.patience]
+                    break
 
-        y_pred_scaled = y_pred_tensor.cpu().numpy()
-        y_pred = self.y_scaler.inverse_transform(y_pred_scaled)
-        y_actual = self.y_scaler.inverse_transform( self.y_test_tensor.cpu().numpy())
-
-        mae = mean_absolute_error(y_actual, y_pred)
-        mse = mean_squared_error(y_actual, y_pred)
-        correlation = np.corrcoef(y_actual.flatten(), y_pred.flatten())[0, 1]
-
-        print(f"Mean Absolute Error: {mae:.2f}")
-        print(f"Mean Squared Error: {mse:.2f}")
-        print(f"Correlation: {correlation:.2f}")
-
-        if plot_results:
-            self._plot_results(y_actual, y_pred)
-    
+        return train_losses, val_losses, stop_epoch
 
     def _plot_training(self, num_epochs, train_losses, test_losses):
         plt.plot(list(range(num_epochs)), train_losses, color="black", label="Train")
-        plt.plot(list(range(num_epochs)), test_losses, color="royalblue", label="Test")
+        plt.plot(list(range(num_epochs)), test_losses, color="royalblue", label="Val")
         plt.xlabel("Epoch")
         plt.ylabel("MAE Loss")
-        plt.title("Train vs test loss during training")
+        plt.title("Train vs val loss during training")
         plt.legend()
         plt.show()
-    
+
     def _plot_results(self, y_actual, y_pred):
-        days = [i - 3286 for i in list(range(self.season_start, self.season_end + 1))]
+        days = [
+            i - 3286 + 365 for i in list(range(self.season_start, self.season_end + 1))
+        ]
         plt.plot(days, y_actual, color="black", label="Actual")
         plt.plot(days, y_pred, color="royalblue", label="Predicted")
         plt.xlabel("Days")
         plt.ylabel("ILI Rates")
-        plt.title("Actual vs Predicted ILI Rates (16-17)")
+        plt.title("Actual vs Predicted ILI Rates")
         plt.legend()
         plt.show()
 
@@ -156,15 +223,18 @@ class Neuraler:
             end = 5722 - 1340 - 1
         else:
             raise ValueError("Season must be 1, 2, 3 or 4")
-        
+
         return start, end
 
     def _read_data(self):
-        print('Reading data...')
+        print("Reading data...")
         X = pd.read_csv("../processed_data/final_1000.csv")
         y = pd.read_csv("../processed_data/filtered_ili.csv", header=None)
 
-        X_train, y_train = X[:self.season_start], y[:self.season_start]
-        X_test, y_test = X[self.season_start:self.season_end+1], y[self.season_start:self.season_end+1]
+        X_train, y_train = X[: self.season_start], y[: self.season_start]
+        X_test, y_test = (
+            X[self.season_start : self.season_end + 1],
+            y[self.season_start : self.season_end + 1],
+        )
 
         return X_train, y_train, X_test, y_test
