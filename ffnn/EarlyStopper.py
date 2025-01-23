@@ -3,7 +3,7 @@ from math import inf
 
 
 class EarlyStopper:
-    def __init__(self, patience=10, min_delta=0, restore_best_weights=True):
+    def __init__(self, patience, min_delta=0, restore_best_weights=True):
         """
         Args:
             patience (int): Number of epochs to wait after the last improvement.

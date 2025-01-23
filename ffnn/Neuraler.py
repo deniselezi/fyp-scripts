@@ -10,27 +10,13 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib.pyplot as plt
 
+from FFNN import FFNN
 from EarlyStopper import EarlyStopper
 
 seed = 1
 torch.manual_seed(seed)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
-
-
-class FFNN(nn.Module):
-    def __init__(self, input_dim):
-        super(FFNN, self).__init__()
-        self.layers = nn.Sequential(
-            nn.Linear(input_dim, 200),
-            nn.ReLU(),
-            nn.Linear(200, 100),
-            nn.ReLU(),
-            nn.Linear(100, 1),
-        )
-
-    def forward(self, x):
-        return self.layers(x)
 
 
 class Neuraler:
@@ -71,10 +57,11 @@ class Neuraler:
 
     def fit(
         self,
-        num_epochs=200,
+        num_epochs=500,
         plot_training=True,
         plot_results=True,
         stop_early=True,
+        patience=10,
         warmup=20,
         lr=0.001,
         tune=False,
@@ -92,32 +79,39 @@ class Neuraler:
         # added _train to wrap around the training loop to allow for easy evaluation
         # of validation loss for hyperparameter tuning
         if tune:
-            rates = np.linspace(0.0001, 0.01, 100)
+            rates = np.linspace(0.0001, 0.01, 50)
             best_loss = math.inf
             lr = None
+            k = 3
             for rate in rates:
                 _, val_losses, _ = self._train(
-                    num_epochs, stop_early, warmup, lr=rate
+                    num_epochs, stop_early, warmup, lr=rate, patience=patience
                 )
+                val_losses = val_losses[:len(val_losses) - patience]
+                print("Learning rate:", rate)
+                # loss = np.mean(val_losses[-k:])  # Average over the last `k` epochs
+                loss = val_losses[-1]
+                print("Loss:", loss)
+                if loss < best_loss:
+                    best_loss = loss
+                    lr = rate
+                
                 # reset model weights
                 self.model.load_state_dict(og_model_state)
-                print("Learning rate:", rate)
-                print("Loss:", val_losses[-1])
-                if val_losses[-1] < best_loss:
-                    best_loss = val_losses[-1]
-                    lr = rate
         
             print("The best learning rate is", lr)
         
         train_losses, val_losses, stop_epoch = self._train(
-            num_epochs, stop_early, warmup, lr
+            num_epochs, stop_early, warmup, lr, patience
         )
+
+        print("Final loss:", val_losses[-(patience+1)])
 
         if not stop_epoch:
             stop_epoch = num_epochs
 
         if plot_training:
-            self._plot_training(stop_epoch, train_losses, val_losses)
+            self._plot_training(stop_epoch+patience, train_losses, val_losses)
 
         self.model.eval()
         with torch.no_grad():
@@ -138,10 +132,10 @@ class Neuraler:
         if plot_results:
             self._plot_results(y_actual, y_pred)
 
-    def _train(self, num_epochs, stop_early, warmup, lr):
+    def _train(self, num_epochs, stop_early, warmup, lr, patience):
         criterion = nn.L1Loss()
         optimizer = optim.Adam(self.model.parameters(), lr=lr)
-        early_stopper = EarlyStopper()
+        early_stopper = EarlyStopper(patience=patience)
 
         train_losses = []
         val_losses = []
@@ -174,9 +168,9 @@ class Neuraler:
                 if early_stopper.early_stop:
                     stop_epoch = epoch + 1 - early_stopper.patience
                     print(f"Early stopping at epoch {stop_epoch}")
-                    train_losses = train_losses[:len(train_losses) - early_stopper.patience]
-                    val_losses = val_losses[:len(val_losses) - early_stopper.patience]
                     break
+            else:
+                stop_epoch = (epoch + 1) - patience
 
         return train_losses, val_losses, stop_epoch
 

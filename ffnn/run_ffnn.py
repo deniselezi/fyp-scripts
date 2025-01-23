@@ -1,0 +1,14 @@
+from Neuraler import Neuraler
+
+model = Neuraler(3)
+
+
+"""
+Best learning rates:
+15-16: 0.0059, 0.00373673469387755
+16-17: 0.0035, 0.00333265306122449
+17-18: 0.0081, 0.00636326530612245
+18-19: 0.006969387755102042, 0.005555102040816327
+"""
+
+model.fit(tune=False, num_epochs=200, stop_early=True, lr=0.00636326530612245)
