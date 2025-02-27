@@ -1,0 +1,61 @@
+For dropout 0.05 and learning rate 5e-05:
+MAE: 2.983168363571167
+MSE: 22.171161651611328
+Correlation: 0.7755425288947537
+
+For dropout 0.05 and learning rate 0.0001:
+MAE: 2.9411768913269043
+MSE: 21.463565826416016
+Correlation: 0.7848245939702155
+
+For dropout 0.05 and learning rate 0.0005:
+MAE: 2.7630114555358887
+MSE: 18.69515037536621
+Correlation: 0.8161910126271559
+
+For dropout 0.05 and learning rate 0.001:
+MAE: 2.5305166244506836
+MSE: 16.550561904907227
+Correlation: 0.8668145360984049
+
+For dropout 0.05 and learning rate 0.005:
+MAE: 1.7950068712234497
+MSE: 7.583520889282227
+Correlation: 0.930189931205745
+
+For dropout 0.05 and learning rate 0.01:
+MAE: 1.8031038045883179
+MSE: 7.702506065368652
+Correlation: 0.9194928966258666
+
+For dropout 0.1 and learning rate 5e-05:
+MAE: 2.9139537811279297
+MSE: 22.474390029907227
+Correlation: 0.7772629515270248
+
+For dropout 0.1 and learning rate 0.0001:
+MAE: 2.8887345790863037
+MSE: 22.069955825805664
+Correlation: 0.7847958880654813
+
+For dropout 0.1 and learning rate 0.0005:
+MAE: 2.8880767822265625
+MSE: 19.92810821533203
+Correlation: 0.8047596899265884
+
+For dropout 0.1 and learning rate 0.001:
+MAE: 2.9465925693511963
+MSE: 18.808361053466797
+Correlation: 0.7912735164302225
+
+For dropout 0.1 and learning rate 0.005:
+MAE: 1.7488973140716553
+MSE: 6.025231838226318
+Correlation: 0.9223017787372116
+
+For dropout 0.1 and learning rate 0.01:
+MAE: 2.726346731185913
+MSE: 13.511507034301758
+Correlation: 0.9175648445179473
+
+the best parameters are: (0.1, 0.005)

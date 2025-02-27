@@ -14,13 +14,14 @@ from RNN import GRU
 
 
 class RNNer:
-    def __init__(self, season, window_size=7, hidden_size=50, seed = 1, dropout=0):
+    def __init__(self, season, window_size=7, hidden_size=50, seed=1, dropout=0, hindcasting=False):
         torch.manual_seed(seed)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {device}")
         self.season = season
+        self.hindcasting = hindcasting
         self.season_start, self.season_end = self._get_season_dates()
-        X_train, y_train, X_test, y_test = self._read_data(window_size)
+        X_train, y_train, X_test, y_test = self._read_data(window_size, hindcasting)
         self.x_scaler = MinMaxScaler()
         self.y_scaler = MinMaxScaler()
 
@@ -32,8 +33,8 @@ class RNNer:
 
         X_train_scaled = self.x_scaler.fit_transform(X_train_reshaped).reshape(n_train_samples, window_size, n_features)
         X_test_scaled = self.x_scaler.transform(X_test_reshaped).reshape(n_test_samples, window_size, n_features)
-        y_train_scaled = self.y_scaler.fit_transform(y_train.reshape(-1, 1)).flatten()  # Scale targets
-        y_test_scaled = self.y_scaler.transform(y_test.reshape(-1, 1)).flatten()       # Scale targets
+        y_train_scaled = self.y_scaler.fit_transform(y_train).reshape(n_train_samples, window_size)
+        y_test_scaled = self.y_scaler.transform(y_test).reshape(n_test_samples, window_size)
 
         days = 365
 
@@ -46,16 +47,24 @@ class RNNer:
         self.X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32).to(
             device
         )
-        self.y_train_tensor = torch.tensor(y_train_scaled, dtype=torch.float32).unsqueeze(1).to(
+        self.y_train_tensor = torch.tensor(y_train_scaled, dtype=torch.float32).to(
+            device
+        ) if hindcasting else torch.tensor(y_train_scaled, dtype=torch.float32).unsqueeze(1).to(
             device
         )
         self.X_val_tensor = torch.tensor(X_val, dtype=torch.float32).to(device)
-        self.y_val_tensor = torch.tensor(y_val, dtype=torch.float32).unsqueeze(1).to(device)
+        self.y_val_tensor = torch.tensor(y_val, dtype=torch.float32).to(
+            device
+        ) if hindcasting else torch.tensor(y_val.reshape(-1, window_size), dtype=torch.float32).to(
+            device
+        )
         self.X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32).to(device)
-        self.y_test_tensor = torch.tensor(y_test_scaled, dtype=torch.float32).unsqueeze(1).to(device)
+        self.y_test_tensor = torch.tensor(y_test_scaled, dtype=torch.float32).to(device)
 
         input_dim = n_features
-        self.model = GRU(input_size=input_dim, hidden_size=hidden_size, dropout=dropout).to(device)
+        output_size = window_size if hindcasting else 1
+        print(output_size)
+        self.model = GRU(input_size=input_dim, hidden_size=hidden_size, dropout=dropout, output_size=output_size).to(device)
 
     def fit(
         self,
@@ -73,11 +82,8 @@ class RNNer:
             batch_size=batch_size,
             shuffle=True,
         )
-
-        # print(self.X_train_tensor.shape)
-        # sys.exit()
         
-        train_losses, val_losses, stop_epoch = self._train(
+        train_losses, val_losses, _ = self._train(
             num_epochs, stop_early, warmup, lr, patience
         )
 
@@ -90,9 +96,11 @@ class RNNer:
         with torch.no_grad():
             y_pred_tensor = self.model(self.X_test_tensor)
 
-        y_pred_scaled = y_pred_tensor.cpu().numpy()
-        y_pred = self.y_scaler.inverse_transform(y_pred_scaled)
+        y_pred = self.y_scaler.inverse_transform(y_pred_tensor.cpu().numpy())
         y_actual = self.y_scaler.inverse_transform(self.y_test_tensor.cpu().numpy())
+        if self.hindcasting:
+            y_pred = y_pred[:, -1]
+            y_actual = y_actual[:, -1]
 
         mae = mean_absolute_error(y_actual, y_pred)
         mse = mean_squared_error(y_actual, y_pred)
@@ -104,6 +112,8 @@ class RNNer:
 
         if plot_results:
             self._plot_results(y_actual, y_pred)
+        
+        return mae, mse, correlation
 
     def _train(self, num_epochs, stop_early, warmup, lr, patience):
         criterion = nn.L1Loss()
@@ -193,21 +203,12 @@ class RNNer:
 
         return start, end
 
-    def _read_data(self, window_size):
+    def _read_data(self, window_size, hindcasting):
         print("Reading data...")
         X = pd.read_csv("../processed_data/final_1000.csv")
         y = pd.read_csv("../processed_data/filtered_ili.csv", header=None)
 
-        # print(X[: self.season_start].shape)
-        # print(X[self.season_start : self.season_end + 1].shape)
-
-        print(X.shape, y.shape)
-
-        X, y = self._create_sliding_windows(X, y, window_size=window_size)
-
-        print(X.shape, y.shape)
-
-        # print(X.shape)
+        X, y = self._create_sliding_windows(X, y, window_size, hindcasting)
 
         adjusted_start = self.season_start - (window_size - 1)
         adjusted_end = self.season_end - (window_size - 1)
@@ -215,12 +216,9 @@ class RNNer:
         X_train, y_train = X[:adjusted_start], y[:adjusted_start]
         X_test, y_test = X[adjusted_start:adjusted_end + 1], y[adjusted_start:adjusted_end + 1]
 
-        # print(X_train.shape)
-        # print(X_test.shape)
-
         return X_train, y_train, X_test, y_test
 
-    def _create_sliding_windows(self, X, y, window_size):
+    def _create_sliding_windows(self, X, y, window_size, hindcasting):
 
         X_windows = []
         y_windows = []
@@ -233,7 +231,6 @@ class RNNer:
             raise ValueError("Window size must be smaller than or equal to the number of samples in X.")
 
         X_windows = np.array([X[i:i + window_size] for i in range(n_samples - window_size + 1)])
-        y_windows = y[window_size - 1:]  # targets are last day in each window
+        y_windows = np.array([y[i:i + window_size].flatten() for i in range(n_samples - window_size + 1)]) if hindcasting else y[window_size - 1:]
 
         return X_windows, y_windows
-

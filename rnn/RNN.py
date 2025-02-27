@@ -2,23 +2,6 @@ import torch
 import torch.nn as nn
 
 
-# class RNN(nn.Module):
-#     def __init__(self, input_size, hidden_size=32, num_layers=1, output_size=1):
-#         super(RNN, self).__init__()
-#         self.hidden_size = hidden_size
-#         self.num_layers = num_layers
-#         self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=True)
-        
-#         self.fc = nn.Linear(hidden_size, output_size) # fc layer to map hidden to output
-    
-#     def forward(self, x):
-#         # init hidden state
-#         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
-#         out, _ = self.rnn(x, h0)
-#         out = self.fc(out[:, -1, :])
-#         return out
-
-
 # class GRU(nn.Module):
 #     def __init__(self, input_size, hidden_size, num_layers, output_size=1):
 #         super(GRU, self).__init__()
@@ -34,9 +17,8 @@ import torch.nn as nn
 #         return out
 
 
-# variable size hidden layer GRU
 class GRU(nn.Module):
-    def __init__(self, input_size, hidden_size, dropout, output_size=1):
+    def __init__(self, input_size, hidden_size, dropout, output_size):
         super(GRU, self).__init__()
         self.num_layers = len(hidden_size)
         self.hidden_sizes = hidden_size
@@ -61,3 +43,4 @@ class GRU(nn.Module):
 
         out = self.fc(out[:, -1, :])
         return out
+
