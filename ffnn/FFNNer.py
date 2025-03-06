@@ -13,19 +13,20 @@ import matplotlib.pyplot as plt
 from FFNN import FFNN
 from EarlyStopper import EarlyStopper
 
-seed = 1
-torch.manual_seed(seed)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
 
+class FFNNer:
+    def __init__(self, season, seed = 1):
+        torch.manual_seed(seed)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device: {device}")
 
-class Neuraler:
-    def __init__(self, season, batch_size=32):
         self.season = season
         self.season_start, self.season_end = self._get_season_dates()
         X_train, y_train, X_test, y_test = self._read_data()
         self.x_scaler = MinMaxScaler()
         self.y_scaler = MinMaxScaler()
+        # self.x_scaler = StandardScaler()
+        # self.y_scaler = StandardScaler()
         X_train_scaled = self.x_scaler.fit_transform(X_train)
         X_test_scaled = self.x_scaler.transform(X_test)
         y_train_scaled = self.y_scaler.fit_transform(y_train)
@@ -50,8 +51,6 @@ class Neuraler:
         self.X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32).to(device)
         self.y_test_tensor = torch.tensor(y_test_scaled, dtype=torch.float32).to(device)
 
-        self.batch_size = batch_size
-
         input_dim = X_train.shape[1]
         self.model = FFNN(input_dim).to(device)
 
@@ -64,51 +63,27 @@ class Neuraler:
         patience=10,
         warmup=20,
         lr=0.001,
+        batch_size=32,
         tune=False,
     ):
         self.train_loader = DataLoader(
             TensorDataset(self.X_train_tensor, self.y_train_tensor),
-            batch_size=self.batch_size,
+            batch_size=batch_size,
             shuffle=True,
         )
-
-        stop_epoch = None
-
-        og_model_state = copy.deepcopy(self.model.state_dict())
-
-        # added _train to wrap around the training loop to allow for easy evaluation
-        # of validation loss for hyperparameter tuning
-        if tune:
-            rates = np.linspace(0.0001, 0.01, 50)
-            best_loss = math.inf
-            lr = None
-            k = 3
-            for rate in rates:
-                _, val_losses, _ = self._train(
-                    num_epochs, stop_early, warmup, lr=rate, patience=patience
-                )
-                val_losses = val_losses[:len(val_losses) - patience]
-                print("Learning rate:", rate)
-                # loss = np.mean(val_losses[-k:])  # Average over the last `k` epochs
-                loss = val_losses[-1]
-                print("Loss:", loss)
-                if loss < best_loss:
-                    best_loss = loss
-                    lr = rate
-                
-                # reset model weights
-                self.model.load_state_dict(og_model_state)
-        
-            print("The best learning rate is", lr)
         
         train_losses, val_losses, stop_epoch = self._train(
             num_epochs, stop_early, warmup, lr, patience
         )
 
-        print("Final loss:", val_losses[-(patience+1)])
+        final_loss = val_losses[-(patience+1)]
+        print("Final loss:", final_loss)
 
-        if not stop_epoch:
-            stop_epoch = num_epochs
+        if tune:  # this is a tuning run, i.e. we are interested in validation loss
+            return final_loss  # so we return here and dont use test set
+
+        # if not stop_epoch:
+        #     stop_epoch = num_epochs
 
         if plot_training:
             self._plot_training(stop_epoch+patience, train_losses, val_losses)
@@ -125,12 +100,14 @@ class Neuraler:
         mse = mean_squared_error(y_actual, y_pred)
         correlation = np.corrcoef(y_actual.flatten(), y_pred.flatten())[0, 1]
 
-        print(f"Mean Absolute Error: {mae:.2f}")
-        print(f"Mean Squared Error: {mse:.2f}")
-        print(f"Correlation: {correlation:.2f}")
+        results = [f"Mean Absolute Error: {mae:.2f}", f"Mean Squared Error: {mse:.2f}", f"Correlation: {correlation:.2f}"]
+        print(results)
 
         if plot_results:
             self._plot_results(y_actual, y_pred)
+
+        return results, [mae, mse, correlation]
+
 
     def _train(self, num_epochs, stop_early, warmup, lr, patience):
         criterion = nn.L1Loss()
@@ -184,8 +161,9 @@ class Neuraler:
         plt.show()
 
     def _plot_results(self, y_actual, y_pred):
+        np.savetxt("preds.csv", y_pred, delimiter=",")
         days = [
-            i - 3286 + 365 for i in list(range(self.season_start, self.season_end + 1))
+            i+1 for i in range(len(y_actual))
         ]
         plt.plot(days, y_actual, color="black", label="Actual")
         plt.plot(days, y_pred, color="royalblue", label="Predicted")

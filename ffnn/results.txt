@@ -1,0 +1,128 @@
+Season 1
+
+
+Seed: 2382
+Mean Absolute Error: 1.34
+Mean Squared Error: 4.44
+Correlation: 0.95
+
+Seed: 9430
+Mean Absolute Error: 1.50
+Mean Squared Error: 5.85
+Correlation: 0.94
+
+Seed: 6807
+Mean Absolute Error: 1.50
+Mean Squared Error: 5.49
+Correlation: 0.94
+
+Seed: 9305
+Mean Absolute Error: 1.45
+Mean Squared Error: 5.67
+Correlation: 0.93
+
+Seed: 9672
+Mean Absolute Error: 1.62
+Mean Squared Error: 5.77
+Correlation: 0.94
+
+Mean MAE: 1.4807007312774658
+Mean MSE: 5.4421618461608885
+Mean correlation: 0.9408738502518978
+
+Season 2
+
+
+Seed: 2382
+Mean Absolute Error: 2.19
+Mean Squared Error: 8.36
+Correlation: 0.97
+
+Seed: 9430
+Mean Absolute Error: 2.51
+Mean Squared Error: 10.37
+Correlation: 0.96
+
+Seed: 6807
+Mean Absolute Error: 2.06
+Mean Squared Error: 7.02
+Correlation: 0.96
+
+Seed: 9305
+Mean Absolute Error: 2.20
+Mean Squared Error: 8.74
+Correlation: 0.97
+
+Seed: 9672
+Mean Absolute Error: 2.30
+Mean Squared Error: 9.12
+Correlation: 0.96
+
+Mean MAE: 2.2525055408477783
+Mean MSE: 8.721625804901123
+Mean correlation: 0.9619148631017786
+
+Season 3
+
+
+Seed: 2382
+Mean Absolute Error: 7.03
+Mean Squared Error: 129.05
+Correlation: 0.97
+
+Seed: 9430
+Mean Absolute Error: 8.47
+Mean Squared Error: 194.40
+Correlation: 0.97
+
+Seed: 6807
+Mean Absolute Error: 4.47
+Mean Squared Error: 42.34
+Correlation: 0.96
+
+Seed: 9305
+Mean Absolute Error: 3.13
+Mean Squared Error: 18.32
+Correlation: 0.96
+
+Seed: 9672
+Mean Absolute Error: 14.47
+Mean Squared Error: 566.66
+Correlation: 0.96
+
+Mean MAE: 7.513561391830445
+Mean MSE: 190.1532196044922
+Mean correlation: 0.965111794447315
+
+Season 4
+
+
+Seed: 2382
+Mean Absolute Error: 1.40
+Mean Squared Error: 3.56
+Correlation: 0.97
+
+Seed: 9430
+Mean Absolute Error: 1.65
+Mean Squared Error: 4.73
+Correlation: 0.97
+
+Seed: 6807
+Mean Absolute Error: 1.80
+Mean Squared Error: 5.21
+Correlation: 0.96
+
+Seed: 9305
+Mean Absolute Error: 1.57
+Mean Squared Error: 5.32
+Correlation: 0.96
+
+Seed: 9672
+Mean Absolute Error: 1.72
+Mean Squared Error: 5.19
+Correlation: 0.96
+
+Mean MAE: 1.6275497913360595
+Mean MSE: 4.803131151199341
+Mean correlation: 0.9647729918004719
+

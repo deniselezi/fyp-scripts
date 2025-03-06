@@ -12,9 +12,11 @@ from EarlyStopper import EarlyStopper
 
 from RNN import GRU
 
+import sys
+
 
 class RNNer:
-    def __init__(self, season, window_size=7, hidden_size=50, seed=1, dropout=0, hindcasting=False):
+    def __init__(self, season, window_size=7, hidden_size=50, seed=1, dropout=0, hindcasting=False, num_layers=None):
         torch.manual_seed(seed)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {device}")
@@ -64,7 +66,9 @@ class RNNer:
         input_dim = n_features
         output_size = window_size if hindcasting else 1
         print(output_size)
-        self.model = GRU(input_size=input_dim, hidden_size=hidden_size, dropout=dropout, output_size=output_size).to(device)
+        self.model = GRU(
+            input_size=input_dim, hidden_size=hidden_size, num_layers=num_layers, dropout=dropout, output_size=output_size
+        ).to(device)
 
     def fit(
         self,
@@ -87,7 +91,8 @@ class RNNer:
             num_epochs, stop_early, warmup, lr, patience
         )
 
-        print("Final loss:", val_losses[-(patience+1)])
+        final_loss = val_losses[-(patience+1)]
+        print("Final loss:", final_loss)
 
         if plot_training:
             self._plot_training(len(train_losses), train_losses, val_losses)
@@ -113,7 +118,7 @@ class RNNer:
         if plot_results:
             self._plot_results(y_actual, y_pred)
         
-        return mae, mse, correlation
+        return mae, mse, correlation, final_loss
 
     def _train(self, num_epochs, stop_early, warmup, lr, patience):
         criterion = nn.L1Loss()
@@ -126,6 +131,8 @@ class RNNer:
             self.model.train()
             epoch_train_loss = 0
             for batch_X, batch_y in self.train_loader:
+                # print(batch_X.shape)
+                # sys.exit()
                 optimizer.zero_grad()
                 outputs = self.model(batch_X)
                 loss = criterion(outputs, batch_y)

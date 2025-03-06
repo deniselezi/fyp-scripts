@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from sklearn.linear_model import Lasso
+from sklearn.linear_model import Lasso, LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
 class Lassoer:
-    def __init__(self, season, alpha=None):
+    def __init__(self, season, alpha=None, model="lasso"):
         self.season = season
         self.season_start, self.season_end = self._get_season_dates()
         X_train, y_train, X_test, y_test = self._read_data()
@@ -19,15 +19,20 @@ class Lassoer:
         self.X_test_scaled = self.x_scaler.transform(X_test)
         self.y_train_scaled = self.y_scaler.fit_transform(y_train)
         self.y_test_scaled = self.y_scaler.transform(y_test)
-        self.max_iter = 10000
-        self.tol = 0.0001
         
-        # if no alpha provided, find optimal alpha for the Lasso model
-        best_alpha = alpha if alpha else self._find_optimal_alpha()
-        
-        self.model = Lasso(alpha=best_alpha, max_iter=self.max_iter, tol=self.tol)
+        if model == "lasso":
+            self.max_iter = 100000
+            self.tol = 0.0001
+            # if no alpha provided, find optimal alpha for the Lasso model
+            best_alpha = alpha if alpha != None else self._find_optimal_alpha()
+            
+            self.model = Lasso(alpha=best_alpha, max_iter=self.max_iter, tol=self.tol)
+            # zero_weights = np.sum(self.model.coef_ == 0)
+            # print(f"The model density is {((1000 - zero_weights) / 1000)*100}%")
+        else:
+            print("model = LinearRegression")
+            self.model = LinearRegression()
 
-    
     def fit(self, show_chart=True):
         self.model.fit(self.X_train_scaled, self.y_train_scaled)
 
@@ -116,9 +121,11 @@ class Lassoer:
         a_1 = ((0.001 - 0) / 100) * a_1_idx
         a_2 = ((0.001 - 0) / 100) * a_2_idx
 
+        a_2 = a_2 / 10
+
         print(zpercs)
         print("Alpha 1 is", a_1, "and alpha 2 is", a_2)
-        input()
+        # input()
 
         alphas = np.linspace(a_1, a_2, 1000)
         maes = []

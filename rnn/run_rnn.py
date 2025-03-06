@@ -10,27 +10,31 @@ import math
 # 28, 96, 3 -> 1.27, 3.73
 
 
-# model = RNNer(1, window_size=14, hidden_size=[100, 50], dropout=0.0, hindcasting=True)
-# model.fit(stop_early=True, batch_size=16, lr=0.005, plot_training=True, plot_results=True)
+model = RNNer(4, window_size=7, hidden_size=[50, 25], num_layers=2, dropout=0.2, hindcasting=True)
+model.fit(stop_early=True, batch_size=16, lr=0.005, plot_training=True, plot_results=True)
 
-dropouts = [0.05, 0.1]
-lrs = [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01]
+# dropouts = [0, 0.05, 0.1, 0.2]
+# lrs = [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01]
 
-best_mae = math.inf
-best_params = None
-f = open("results.txt", "a+")
-for d in dropouts:
-    for lr in lrs:
-        model = RNNer(1, window_size=14, hidden_size=[50], dropout=d, hindcasting=True)
-        mae, mse, corr = model.fit(stop_early=True, batch_size=16, lr=lr, plot_training=False, plot_results=False)
-        if mae < best_mae:
-            best_mae = mae
-            best_params = (d, lr)
-        f.write(f"For dropout {d} and learning rate {lr}:\n")
-        f.write(f"MAE: {mae}\nMSE: {mse}\nCorrelation: {corr}\n\n")
+# best_mae= math.inf
+# best_results = None
+# best_params = None
+# for season in range(1, 4):
+#     print(f"SEASON {season+1}")
+#     f = open(f"log_{season+1}.txt", "a+")
+#     for d in dropouts:
+#         for lr in lrs:
+#             model = RNNer(season+1, window_size=7, hidden_size=[50, 25], num_layers=2, dropout=d, hindcasting=True)
+#             mae, mse, corr, loss = model.fit(stop_early=True, batch_size=16, lr=lr, plot_training=False, plot_results=False)
+#             if mae < best_mae:
+#                 best_mae = mae
+#                 best_params = (d, lr)
+#                 best_results = (mae, mse, corr, loss)
+#             f.write(f"For dropout {d} and learning rate {lr}:\n")
+#             f.write(f"MAE: {mae}\nMSE: {mse}\nCorrelation: {corr}\nLoss: {loss}\n\n")
 
-f.write(f"the best parameters are: ({best_params[0]}, {best_params[1]})")
-f.close()
+#     f.write(f"the best parameters are: ({best_params[0]}, {best_params[1]})\nwhich give the results {best_results[0], best_results[1], best_results[2]}")
+#     f.close()
 
 
 # [50], 0.001, 16
