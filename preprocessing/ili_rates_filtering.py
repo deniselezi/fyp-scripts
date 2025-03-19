@@ -23,13 +23,13 @@ for col in data.columns:
 
 sorted_columns = sorted(similarity_scores, key=similarity_scores.get, reverse=True)
 
-top_1000_columns = sorted_columns[:500]
+top_cols = sorted_columns[:400]
 
-top_1000_data = data[top_1000_columns]
+top_data = data[top_cols]
 
-print(top_1000_data)
+print(top_data)
 
 # save data
-top_1000_data.to_csv("../processed_data/final_500.csv", index=False)
+top_data.to_csv("../processed_data/final_400.csv", index=False)
 
 print(f"Top columns saved")
