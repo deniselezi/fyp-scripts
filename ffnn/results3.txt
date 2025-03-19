@@ -1,0 +1,13 @@
+Season 1
+The best learning rate for batch size 16 is 0.001 with an MAE loss of 0.007026683073490858
+The best learning rate for batch size 32 is 0.0005 with an MAE loss of 0.007141199428588152
+Season 2
+The best learning rate for batch size 16 is 0.0005 with an MAE loss of 0.006337430793792009
+The best learning rate for batch size 32 is 0.0005 with an MAE loss of 0.007393523119390011
+Season 3
+The best learning rate for batch size 16 is 0.0001 with an MAE loss of 0.007590676657855511
+The best learning rate for batch size 32 is 0.005 with an MAE loss of 0.00828856322914362
+Season 4
+The best learning rate for batch size 16 is 0.0001 with an MAE loss of 0.006608229596167803
+The best learning rate for batch size 32 is 0.001 with an MAE loss of 0.0071821315214037895
+

@@ -10,30 +10,31 @@ import math
 # 28, 96, 3 -> 1.27, 3.73
 
 
-model = RNNer(4, window_size=7, hidden_size=[50, 25], num_layers=2, dropout=0.2, hindcasting=True)
+model = RNNer(1, window_size=7, hidden_size=[50, 25], num_layers=2, dropout=0.2, hindcasting=True, advanced_validation=True)
 model.fit(stop_early=True, batch_size=16, lr=0.005, plot_training=True, plot_results=True)
 
 # dropouts = [0, 0.05, 0.1, 0.2]
 # lrs = [0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01]
 
-# best_mae= math.inf
-# best_results = None
-# best_params = None
-# for season in range(1, 4):
+# for season in range(3, 4):
+#     best_loss= math.inf
+#     best_results = None
+#     best_params = None
 #     print(f"SEASON {season+1}")
 #     f = open(f"log_{season+1}.txt", "a+")
 #     for d in dropouts:
 #         for lr in lrs:
+#             print(d, lr)
 #             model = RNNer(season+1, window_size=7, hidden_size=[50, 25], num_layers=2, dropout=d, hindcasting=True)
 #             mae, mse, corr, loss = model.fit(stop_early=True, batch_size=16, lr=lr, plot_training=False, plot_results=False)
-#             if mae < best_mae:
-#                 best_mae = mae
+#             if loss < best_loss:
+#                 best_loss = loss
 #                 best_params = (d, lr)
 #                 best_results = (mae, mse, corr, loss)
-#             f.write(f"For dropout {d} and learning rate {lr}:\n")
-#             f.write(f"MAE: {mae}\nMSE: {mse}\nCorrelation: {corr}\nLoss: {loss}\n\n")
+#             # f.write(f"For dropout {d} and learning rate {lr}:\n")
+#             # f.write(f"MAE: {mae}\nMSE: {mse}\nCorrelation: {corr}\nLoss: {loss}\n\n")
 
-#     f.write(f"the best parameters are: ({best_params[0]}, {best_params[1]})\nwhich give the results {best_results[0], best_results[1], best_results[2]}")
+#     f.write(f"the best parameters are: ({best_params[0]}, {best_params[1]})\nwhich give the results {best_results[0], best_results[1], best_results[2], best_results[3]}")
 #     f.close()
 
 

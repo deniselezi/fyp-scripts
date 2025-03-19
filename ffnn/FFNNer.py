@@ -15,7 +15,7 @@ from EarlyStopper import EarlyStopper
 
 
 class FFNNer:
-    def __init__(self, season, seed = 1):
+    def __init__(self, season, seed = 1, advanced_validation=False):
         torch.manual_seed(seed)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {device}")
@@ -34,11 +34,14 @@ class FFNNer:
 
         days = 365
 
-        # last year as validation set
-        X_val = X_train_scaled[self.season_start - days : self.season_start]
-        X_train_scaled = X_train_scaled[: self.season_start - days]
-        y_val = y_train_scaled[self.season_start - days : self.season_start]
-        y_train_scaled = y_train_scaled[: self.season_start - days]
+        if advanced_validation:
+            X_train_scaled, y_train_scaled, X_val, y_val = self._validation_set(X_train_scaled, y_train_scaled)
+        else:
+            # last year as validation set
+            X_val = X_train_scaled[self.season_start - days : self.season_start]
+            y_val = y_train_scaled[self.season_start - days : self.season_start]
+            X_train_scaled = X_train_scaled[: self.season_start - days]
+            y_train_scaled = y_train_scaled[: self.season_start - days]
 
         self.X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32).to(
             device
@@ -173,6 +176,7 @@ class FFNNer:
         plt.legend()
         plt.show()
 
+
     def _get_season_dates(self):
         """
         Season:
@@ -198,6 +202,7 @@ class FFNNer:
 
         return start, end
 
+
     def _read_data(self):
         print("Reading data...")
         X = pd.read_csv("../processed_data/final_1000.csv")
@@ -210,3 +215,90 @@ class FFNNer:
         )
 
         return X_train, y_train, X_test, y_test
+
+
+    def _validation_set(self, X_train, y_train, plot_validation=False):
+        """
+        Selects the validation set using an advanced strategy based on onset, peak, and outset periods.
+        """
+        print("validating advancedly")
+        season_start = self.season_start
+        # print(X_train.shape)
+        validation_period_start = season_start - 3 * 365
+        validation_period_end = season_start
+        print(f"Validation period: {validation_period_start} - {validation_period_end}")
+        validation_period_y = y_train[validation_period_start:validation_period_end]
+        validation_period_y = validation_period_y.transpose()[-1]
+        print(validation_period_y.shape)
+        
+        # Calculate threshold
+        mean_y = np.mean(y_train[:validation_period_start])
+        std_y = np.std(y_train[:validation_period_start])
+        threshold = mean_y - 0.25 * std_y
+        
+        # Find onset period (3rd year in validation period)
+        onset_start_idx = None
+        for i in range(2 * 365, 3 * 365):
+            if (validation_period_y[i:i+14] > threshold).all():
+                onset_start_idx = i
+                break
+        
+        if onset_start_idx is None:
+            raise ValueError("Onset period not found.")
+        
+        onset_window_start = validation_period_start + onset_start_idx - 30
+        onset_window_end = onset_window_start + 60
+        
+        # Find peak period (2nd year in validation period)
+        peak_idx = np.argmax(validation_period_y[365:2*365]) + 365
+        peak_window_start = validation_period_start + peak_idx - 30
+        peak_window_end = peak_window_start + 60
+        
+        # Find outset period (1st year in validation period)
+        outset_start_idx = None
+        for i in range(365):
+            # print(validation_period_y[i])
+            if validation_period_y[i] > threshold:
+                outset_start_idx = i
+        
+        if outset_start_idx is None:
+            raise ValueError("Outset period not found.")
+        
+        outset_window_start = validation_period_start + outset_start_idx - 30
+        outset_window_end = outset_window_start + 60
+        
+        # Create validation set
+        val_indices = np.concatenate([
+            np.arange(onset_window_start, onset_window_end),
+            np.arange(peak_window_start, peak_window_end),
+            np.arange(outset_window_start, outset_window_end)
+        ])
+        
+        # print("ONSET:", onset_start_idx)
+        # print("PEAK:", peak_idx)
+        # print("OUTSET:", outset_start_idx)
+
+        X_val = X_train[val_indices]
+        y_val = y_train[val_indices]
+        
+        # Remove validation indices from training set
+        print(val_indices.shape)
+        train_indices = np.concatenate([
+            np.arange(0, validation_period_start),
+            np.setdiff1d(np.arange(validation_period_start, validation_period_end), val_indices)
+        ])
+        X_train = X_train[train_indices]
+        y_train = y_train[train_indices]
+
+        if plot_validation:
+            self.plot_validation_set(y_train, train_indices, y_val, val_indices)
+
+        # print("SHAPES")
+        # print(X_train.shape)
+        # print(X_val.shape)
+        # print(X_train.shape[0]+X_val.shape[0])
+
+        # ensure no samples were lost during split
+        assert(X_train.shape[0]+X_val.shape[0] == season_start)
+        
+        return X_train, y_train, X_val, y_val

@@ -18,18 +18,19 @@ Best learning rates, custom LRs (32 batch size, 16 batch size):
 18-19: 0.01 (1.65, 8.24, 0.95), 0.0005 (1.67, 4.91, 0.97)
 """
 
-# batches = [8]
+# batches = [16, 32]
 # lrs = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
 
 # f = open("results3.txt", "+a")
-# for season in range(2):
+# for season in range(4):
 #     print(f"season {season+1}")
 #     f.write(f"Season {season+1}\n")
 #     for bsize in batches:
 #         best_lr = None
 #         best_loss = math.inf
 #         for rate in lrs:
-#             model = Neuraler(season+1)
+#             print(bsize, rate)
+#             model = FFNNer(season+1, advanced_validation=True)
 #             loss = model.fit(stop_early=True, lr=rate, batch_size=bsize, tune=True)
 #             if loss < best_loss:
 #                 best_loss = loss
@@ -40,32 +41,52 @@ Best learning rates, custom LRs (32 batch size, 16 batch size):
 # f.write("\n")
 # f.close()
 
-seeds = [random.randint(0, 10000) for _ in range(5)]
-params = [(0.005, 32), (0.001, 32), (0.001, 16), (0.0005, 16)]
 
-f = open("results.txt", "+a")
-for season, season_params in enumerate(params):
-    lr, batch = season_params
-    print(f"season {season+1}")
-    f.write(f"Season {season+1}\n\n\n")
-    maes = []
-    mses = []
-    corrs = []
-    for seed in seeds:
-        f.write(f"Seed: {seed}\n")
-        model = FFNNer(season+1, seed=seed)
-        results, nums = model.fit(lr=lr, batch_size=batch, plot_training=False, plot_results=False)
-        maes.append(float(nums[0]))
-        mses.append(float(nums[1]))
-        corrs.append(float(nums[2]))
-        f.write(f"{results[0]}\n{results[1]}\n{results[2]}\n\n")
-    f.write(f"Mean MAE: {np.mean(maes)}\n")
-    f.write(f"Mean MSE: {np.mean(mses)}\n")
-    f.write(f"Mean correlation: {np.mean(corrs)}\n")
+"""
+Season 1
+The best learning rate for batch size 16 is 0.001 with an MAE loss of 0.007026683073490858
+The best learning rate for batch size 32 is 0.0005 with an MAE loss of 0.007141199428588152
+Season 2
+The best learning rate for batch size 16 is 0.0005 with an MAE loss of 0.006337430793792009
+The best learning rate for batch size 32 is 0.0005 with an MAE loss of 0.007393523119390011
+Season 3
+The best learning rate for batch size 16 is 0.0001 with an MAE loss of 0.007590676657855511
+The best learning rate for batch size 32 is 0.005 with an MAE loss of 0.00828856322914362
+Season 4
+The best learning rate for batch size 16 is 0.0001 with an MAE loss of 0.006608229596167803
+The best learning rate for batch size 32 is 0.001 with an MAE loss of 0.0071821315214037895
+"""
+
+
+model = FFNNer(4, advanced_validation=True)
+model.fit(stop_early=True, lr=0.0001, batch_size=16, tune=False)
+
+
+
+
+# seeds = [random.randint(0, 10000) for _ in range(5)]
+# params = [(0.005, 32), (0.001, 32), (0.001, 16), (0.0005, 16)]
+
+# f = open("results.txt", "+a")
+# for season, season_params in enumerate(params):
+#     lr, batch = season_params
+#     print(f"season {season+1}")
+#     f.write(f"Season {season+1}\n\n\n")
+#     maes = []
+#     mses = []
+#     corrs = []
+#     for seed in seeds:
+#         f.write(f"Seed: {seed}\n")
+#         model = FFNNer(season+1, seed=seed)
+#         results, nums = model.fit(lr=lr, batch_size=batch, plot_training=False, plot_results=False)
+#         maes.append(float(nums[0]))
+#         mses.append(float(nums[1]))
+#         corrs.append(float(nums[2]))
+#         f.write(f"{results[0]}\n{results[1]}\n{results[2]}\n\n")
+#     f.write(f"Mean MAE: {np.mean(maes)}\n")
+#     f.write(f"Mean MSE: {np.mean(mses)}\n")
+#     f.write(f"Mean correlation: {np.mean(corrs)}\n")
     
-    f.write("\n")
-f.close()
+#     f.write("\n")
+# f.close()
 
-
-# model = Neuraler(1)
-# model.fit(stop_early=True, lr=0.0005, batch_size=8, tune=False)
