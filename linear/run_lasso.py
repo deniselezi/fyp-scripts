@@ -14,5 +14,5 @@ from Lassoer import Lassoer
 #     model.fit()
 
 
-model = Lassoer(season=4, alpha=2.9e-05)
+model = Lassoer(season=3, alpha=3.6e-05)
 model.fit()

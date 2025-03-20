@@ -1,2 +1,0 @@
-the best parameters are: (0.1, 0.001)
-which give the results (2.2320335, 8.0280905, 0.9627172167489488, 0.00475951237604022)

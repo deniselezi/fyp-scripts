@@ -49,6 +49,9 @@ class Lassoer:
     def fit(self, show_chart=True):
         self.model.fit(self.X_train_scaled, self.y_train_scaled)
 
+        zero_weights = np.sum(self.model.coef_ == 0)
+        print(f"The number of zero weights is {zero_weights}")
+
         y_pred = self.model.predict(self.X_test_scaled)
 
         self.og_pred = self.y_scaler.inverse_transform(y_pred.reshape(-1, 1))

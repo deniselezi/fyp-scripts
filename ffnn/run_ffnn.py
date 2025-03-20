@@ -4,39 +4,34 @@ import numpy as np
 import math
 import random
 
-"""
-Best learning rates (last loss, last k losses):
-15-16: 0.0059, 0.00373673469387755
-16-17: 0.0035, 0.00333265306122449
-17-18: 0.0081, 0.00636326530612245
-18-19: 0.006969387755102042, 0.005555102040816327
+# data_paths = ["../processed_data/final_200.csv", "../processed_data/final_300.csv", "../processed_data/final_400.csv", "../processed_data/final_500.csv"]
+# batches = [8, 16, 32]
+# lrs = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01]
+# seasons = [0, 1, 3]
+# # lrs = [0.0005]
 
-Best learning rates, custom LRs (32 batch size, 16 batch size):
-15-16: 0.005 (1.34, 4.83, 0.95), 0.001 (1.45, 5.51, 0.93)
-16-17: 0.001 (2.42, 10.53, 0.96), 0.001 (2.64, 12.45, 0.95)
-17-18: 0.01 (3.15, 33.32, 0.95), 0.01 (2.26, 14.78, 0.96)
-18-19: 0.01 (1.65, 8.24, 0.95), 0.0005 (1.67, 4.91, 0.97)
-"""
-
-# batches = [16, 32]
-# lrs = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
-
-# f = open("results3.txt", "+a")
-# for season in range(4):
+# f = open("results.txt", "a+")
+# for season in seasons:
 #     print(f"season {season+1}")
 #     f.write(f"Season {season+1}\n")
-#     for bsize in batches:
-#         best_lr = None
-#         best_loss = math.inf
-#         for rate in lrs:
-#             print(bsize, rate)
-#             model = FFNNer(season+1, advanced_validation=True)
-#             loss = model.fit(stop_early=True, lr=rate, batch_size=bsize, tune=True)
-#             if loss < best_loss:
-#                 best_loss = loss
-#                 best_lr = rate
-#             print(rate, loss)
-#         f.write(f"The best learning rate for batch size {bsize} is {best_lr} with an MAE loss of {best_loss}\n")
+#     best_loss = math.inf
+#     best_lr = None
+#     best_d = None
+#     best_batch = None
+#     for d in data_paths:
+#         for bsize in batches:
+#             for rate in lrs:
+#                 print(d)
+#                 print(bsize, rate)
+#                 model = FFNNer(season+1, advanced_validation=True, data_path=d)
+#                 loss = model.fit(stop_early=True, lr=rate, batch_size=bsize, tune=True)
+#                 if loss < best_loss:
+#                     best_loss = loss
+#                     best_lr = rate
+#                     best_batch = bsize
+#                     best_d = d
+#                 print(rate, loss)
+#     f.write(f"The set of parameters for season {season+1} is\nData: {best_d}\nLR: {best_lr}\nBatch size: {best_batch}\n")
 
 # f.write("\n")
 # f.close()
@@ -58,8 +53,8 @@ The best learning rate for batch size 32 is 0.001 with an MAE loss of 0.00718213
 """
 
 
-model = FFNNer(4, advanced_validation=True)
-model.fit(stop_early=True, lr=0.0001, batch_size=16, tune=False)
+model = FFNNer(4, advanced_validation=True, data_path="../processed_data/final_300.csv")
+model.fit(stop_early=True, lr=0.001, batch_size=16, tune=False)
 
 
 

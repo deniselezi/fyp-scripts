@@ -15,14 +15,14 @@ from EarlyStopper import EarlyStopper
 
 
 class FFNNer:
-    def __init__(self, season, seed = 1, advanced_validation=False):
+    def __init__(self, season, data_path, seed = 1, advanced_validation=False):
         torch.manual_seed(seed)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {device}")
 
         self.season = season
         self.season_start, self.season_end = self._get_season_dates()
-        X_train, y_train, X_test, y_test = self._read_data()
+        X_train, y_train, X_test, y_test = self._read_data(data_path)
         self.x_scaler = MinMaxScaler()
         self.y_scaler = MinMaxScaler()
         # self.x_scaler = StandardScaler()
@@ -203,9 +203,9 @@ class FFNNer:
         return start, end
 
 
-    def _read_data(self):
+    def _read_data(self, path):
         print("Reading data...")
-        X = pd.read_csv("../processed_data/final_1000.csv")
+        X = pd.read_csv(path)
         y = pd.read_csv("../processed_data/filtered_ili.csv", header=None)
 
         X_train, y_train = X[: self.season_start], y[: self.season_start]
@@ -221,15 +221,15 @@ class FFNNer:
         """
         Selects the validation set using an advanced strategy based on onset, peak, and outset periods.
         """
-        print("validating advancedly")
+        # print("validating advancedly")
         season_start = self.season_start
         # print(X_train.shape)
         validation_period_start = season_start - 3 * 365
         validation_period_end = season_start
-        print(f"Validation period: {validation_period_start} - {validation_period_end}")
+        # print(f"Validation period: {validation_period_start} - {validation_period_end}")
         validation_period_y = y_train[validation_period_start:validation_period_end]
         validation_period_y = validation_period_y.transpose()[-1]
-        print(validation_period_y.shape)
+        # print(validation_period_y.shape)
         
         # Calculate threshold
         mean_y = np.mean(y_train[:validation_period_start])
@@ -282,7 +282,7 @@ class FFNNer:
         y_val = y_train[val_indices]
         
         # Remove validation indices from training set
-        print(val_indices.shape)
+        # print(val_indices.shape)
         train_indices = np.concatenate([
             np.arange(0, validation_period_start),
             np.setdiff1d(np.arange(validation_period_start, validation_period_end), val_indices)

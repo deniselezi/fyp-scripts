@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-
+import sys
 
 # class GRU(nn.Module):
 #     def __init__(self, input_size, hidden_size, num_layers, output_size=1, dropout=0):
@@ -18,7 +18,7 @@ import torch.nn as nn
 
 
 class GRU(nn.Module):
-    def __init__(self, input_size, hidden_size, dropout, output_size, num_layers=None):
+    def __init__(self, input_size, hidden_size, dropout, output_size):
         super(GRU, self).__init__()
         self.num_layers = len(hidden_size)
         self.hidden_sizes = hidden_size
@@ -28,8 +28,7 @@ class GRU(nn.Module):
                 in_size = input_size if i == 0 else hidden_size[i - 1]
                 self.gru_layers.append(nn.GRU(in_size, hidden_size[i], num_layers=1, batch_first=True))
 
-        # self.dropout = nn.Dropout(dropout) if self.num_layers > 1 else None
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout) if dropout else None
         self.fc = nn.Linear(hidden_size[-1], output_size)
     
     def forward(self, x):

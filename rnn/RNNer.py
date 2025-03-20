@@ -16,15 +16,15 @@ import sys
 
 
 class RNNer:
-    def __init__(self, season, window_size=7, hidden_size=50, seed=1, dropout=0, hindcasting=False, num_layers=None, advanced_validation=False):
+    def __init__(self, season, data_path, window_size=7, hidden_size=50, seed=1, dropout=None, hindcasting=False, advanced_validation=True):
         torch.manual_seed(seed)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(f"Using device: {device}")
+        # print(f"Using device: {device}")
         self.season = season
         self.hindcasting = hindcasting
         self.window_size = window_size
         self.season_start, self.season_end = self._get_season_dates()
-        X_train, y_train, X_test, y_test = self._read_data(window_size, hindcasting)
+        X_train, y_train, X_test, y_test = self._read_data(data_path, window_size, hindcasting)
         self.x_scaler = MinMaxScaler()
         self.y_scaler = MinMaxScaler()
 
@@ -71,9 +71,8 @@ class RNNer:
 
         input_dim = n_features
         output_size = window_size if hindcasting else 1
-        print(output_size)
         self.model = GRU(
-            input_size=input_dim, hidden_size=hidden_size, num_layers=num_layers, dropout=dropout, output_size=output_size
+            input_size=input_dim, hidden_size=hidden_size, dropout=dropout, output_size=output_size
         ).to(device)
 
     def fit(
@@ -216,9 +215,8 @@ class RNNer:
 
         return start, end
 
-    def _read_data(self, window_size, hindcasting):
-        print("Reading data...")
-        X = pd.read_csv("../processed_data/final_1000.csv")
+    def _read_data(self, path, window_size, hindcasting):
+        X = pd.read_csv(path)
         y = pd.read_csv("../processed_data/filtered_ili.csv", header=None)
 
         X, y = self._create_sliding_windows(X, y, window_size, hindcasting)
@@ -253,17 +251,17 @@ class RNNer:
         """
         Selects the validation set using an advanced strategy based on onset, peak, and outset periods.
         """
-        print("validating advancedly")
+        # print("validating advancedly")
         # print(X_train.shape)
-        season_start = self.season_start
-        # season_start = self.season_start - (self.window_size-1)  # need to adjust this value for subsequent calculations
+        # season_start = self.season_start
+        season_start = self.season_start - (self.window_size-1)  # need to adjust this value for subsequent calculations
         # number of training samples is reduced after creating sliding windows
         validation_period_start = season_start - 3 * 365
         validation_period_end = season_start
-        print(f"Validation period: {validation_period_start} - {validation_period_end}")
+        # print(f"Validation period: {validation_period_start} - {validation_period_end}")
         validation_period_y = y_train[validation_period_start:validation_period_end]
         validation_period_y = validation_period_y.transpose()[-1]
-        print(validation_period_y.shape)
+        # print(validation_period_y.shape)
         
         # Calculate threshold
         mean_y = np.mean(y_train[:validation_period_start])
@@ -316,7 +314,7 @@ class RNNer:
         y_val = y_train[val_indices]
         
         # Remove validation indices from training set
-        print(val_indices.shape)
+        # print(val_indices.shape)
         train_indices = np.concatenate([
             np.arange(0, validation_period_start),
             np.setdiff1d(np.arange(validation_period_start, validation_period_end), val_indices)
