@@ -23,17 +23,14 @@ ref_sentences = [
     few days to two weeks, it can cause severe complications like pneumonia,
     especially in young children, the elderly, or individuals with weakened
     immune systems. Annual flu vaccinations help prevent infection and reduce
-    the severity of symptoms if contracted."""
+    the severity of symptoms if contracted.""",
 ]
 
 ref_embeddings = model.encode(ref_sentences)
 
-# embedding = model.encode("Do I have the influenza illness?")
-# print(cosine_similarity(embedding.reshape(1, -1), ref_embeddings))
-
 queries_path = "../processed_data/filtered_queries.csv"
 scores = []
-with open(queries_path, 'r', encoding="utf-8", errors='replace') as queries_file:
+with open(queries_path, "r", encoding="utf-8", errors="replace") as queries_file:
     print("embedding...")
     idx = 1
     while True:
@@ -42,21 +39,21 @@ with open(queries_path, 'r', encoding="utf-8", errors='replace') as queries_file
             break
         embedding = model.encode(query).reshape(1, -1)
         similarities = cosine_similarity(embedding, ref_embeddings)
-        score = sum(similarities[0])/len(ref_embeddings)
+        score = sum(similarities[0]) / len(ref_embeddings)
         scores.append((idx, score))
         idx += 1
 
 print("sorting...")
 scores.sort(key=lambda x: x[1], reverse=True)
 
-qfile = open(queries_path, encoding="utf-8", errors='replace')
+qfile = open(queries_path, encoding="utf-8", errors="replace")
 
 queries = qfile.readlines()
 
 print("writing...")
-with open("../processed_data/scores.csv", 'w', encoding="utf-8") as scores_file:
+with open("../processed_data/scores.csv", "w", encoding="utf-8") as scores_file:
     scores_file.write("index,score,query\n")
     for s in scores:
         scores_file.write(f"{s[0]},{s[1]},{queries[s[0]-1]}")
-    
+
 qfile.close()

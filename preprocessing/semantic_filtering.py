@@ -6,9 +6,7 @@ data = pd.read_csv("../processed_data/density_filtered.csv", header=None)
 print(data.shape)
 max_id = data.shape[1] - 1
 scores = pd.read_csv("../processed_data/scores.csv", nrows=top_n)
-# print(scores)
 queries = pd.read_csv("../processed_data/filtered_queries.csv", header=None)
-# print(queries)
 
 idxs = [i - 1 for i in scores.iloc[:, 0]]
 print("Best query:", idxs[0])
@@ -21,5 +19,4 @@ filtered_data.columns = filtered_queries.iloc[0]  # set queries as header
 
 print(filtered_data)
 print(filtered_data.shape)
-
 filtered_data.to_csv("../processed_data/semantic_filtered.csv", index=False)

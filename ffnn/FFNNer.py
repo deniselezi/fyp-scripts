@@ -1,5 +1,3 @@
-import copy
-import math
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -15,7 +13,7 @@ from EarlyStopper import EarlyStopper
 
 
 class FFNNer:
-    def __init__(self, season, data_path, seed = 1, advanced_validation=False):
+    def __init__(self, season, data_path, seed=1, advanced_validation=False):
         torch.manual_seed(seed)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {device}")
@@ -25,8 +23,6 @@ class FFNNer:
         X_train, y_train, X_test, y_test = self._read_data(data_path)
         self.x_scaler = MinMaxScaler()
         self.y_scaler = MinMaxScaler()
-        # self.x_scaler = StandardScaler()
-        # self.y_scaler = StandardScaler()
         X_train_scaled = self.x_scaler.fit_transform(X_train)
         X_test_scaled = self.x_scaler.transform(X_test)
         y_train_scaled = self.y_scaler.fit_transform(y_train)
@@ -35,7 +31,9 @@ class FFNNer:
         days = 365
 
         if advanced_validation:
-            X_train_scaled, y_train_scaled, X_val, y_val = self._validation_set(X_train_scaled, y_train_scaled)
+            X_train_scaled, y_train_scaled, X_val, y_val = self._validation_set(
+                X_train_scaled, y_train_scaled
+            )
         else:
             # last year as validation set
             X_val = X_train_scaled[self.season_start - days : self.season_start]
@@ -74,22 +72,19 @@ class FFNNer:
             batch_size=batch_size,
             shuffle=True,
         )
-        
+
         train_losses, val_losses, stop_epoch = self._train(
             num_epochs, stop_early, warmup, lr, patience
         )
 
-        final_loss = val_losses[-(patience+1)]
+        final_loss = val_losses[-(patience + 1)]
         print("Final loss:", final_loss)
 
         if tune:  # this is a tuning run, i.e. we are interested in validation loss
             return final_loss  # so we return here and dont use test set
 
-        # if not stop_epoch:
-        #     stop_epoch = num_epochs
-
         if plot_training:
-            self._plot_training(stop_epoch+patience, train_losses, val_losses)
+            self._plot_training(stop_epoch + patience, train_losses, val_losses)
 
         self.model.eval()
         with torch.no_grad():
@@ -103,14 +98,17 @@ class FFNNer:
         mse = mean_squared_error(y_actual, y_pred)
         correlation = np.corrcoef(y_actual.flatten(), y_pred.flatten())[0, 1]
 
-        results = [f"Mean Absolute Error: {mae:.2f}", f"Mean Squared Error: {mse:.2f}", f"Correlation: {correlation:.2f}"]
+        results = [
+            f"Mean Absolute Error: {mae:.2f}",
+            f"Mean Squared Error: {mse:.2f}",
+            f"Correlation: {correlation:.2f}",
+        ]
         print(results)
 
         if plot_results:
             self._plot_results(y_actual, y_pred)
 
         return results, [mae, mse, correlation]
-
 
     def _train(self, num_epochs, stop_early, warmup, lr, patience):
         criterion = nn.L1Loss()
@@ -164,10 +162,10 @@ class FFNNer:
         plt.show()
 
     def _plot_results(self, y_actual, y_pred):
-        np.savetxt("preds.csv", y_pred, delimiter=",")
-        days = [
-            i+1 for i in range(len(y_actual))
-        ]
+        if self.season == 1:
+            days = list(range(1, 367))
+        else:
+            days = list(range(1, 366))
         plt.plot(days, y_actual, color="black", label="Actual")
         plt.plot(days, y_pred, color="royalblue", label="Predicted")
         plt.xlabel("Days")
@@ -175,7 +173,6 @@ class FFNNer:
         plt.title("Actual vs Predicted ILI Rates")
         plt.legend()
         plt.show()
-
 
     def _get_season_dates(self):
         """
@@ -202,9 +199,7 @@ class FFNNer:
 
         return start, end
 
-
     def _read_data(self, path):
-        print("Reading data...")
         X = pd.read_csv(path)
         y = pd.read_csv("../processed_data/filtered_ili.csv", header=None)
 
@@ -216,89 +211,80 @@ class FFNNer:
 
         return X_train, y_train, X_test, y_test
 
-
     def _validation_set(self, X_train, y_train, plot_validation=False):
         """
         Selects the validation set using an advanced strategy based on onset, peak, and outset periods.
         """
-        # print("validating advancedly")
         season_start = self.season_start
-        # print(X_train.shape)
         validation_period_start = season_start - 3 * 365
         validation_period_end = season_start
-        # print(f"Validation period: {validation_period_start} - {validation_period_end}")
         validation_period_y = y_train[validation_period_start:validation_period_end]
         validation_period_y = validation_period_y.transpose()[-1]
-        # print(validation_period_y.shape)
-        
-        # Calculate threshold
+
+        # calculate threshold
         mean_y = np.mean(y_train[:validation_period_start])
         std_y = np.std(y_train[:validation_period_start])
         threshold = mean_y - 0.25 * std_y
-        
-        # Find onset period (3rd year in validation period)
+
+        # onset period (3rd year in validation period)
         onset_start_idx = None
         for i in range(2 * 365, 3 * 365):
-            if (validation_period_y[i:i+14] > threshold).all():
+            if (validation_period_y[i : i + 14] > threshold).all():
                 onset_start_idx = i
                 break
-        
+
         if onset_start_idx is None:
             raise ValueError("Onset period not found.")
-        
+
         onset_window_start = validation_period_start + onset_start_idx - 30
         onset_window_end = onset_window_start + 60
-        
-        # Find peak period (2nd year in validation period)
-        peak_idx = np.argmax(validation_period_y[365:2*365]) + 365
+
+        # peak period (2nd year in validation period)
+        peak_idx = np.argmax(validation_period_y[365 : 2 * 365]) + 365
         peak_window_start = validation_period_start + peak_idx - 30
         peak_window_end = peak_window_start + 60
-        
-        # Find outset period (1st year in validation period)
+
+        # outset period (1st year in validation period)
         outset_start_idx = None
         for i in range(365):
-            # print(validation_period_y[i])
             if validation_period_y[i] > threshold:
                 outset_start_idx = i
-        
+
         if outset_start_idx is None:
             raise ValueError("Outset period not found.")
-        
+
         outset_window_start = validation_period_start + outset_start_idx - 30
         outset_window_end = outset_window_start + 60
-        
+
         # Create validation set
-        val_indices = np.concatenate([
-            np.arange(onset_window_start, onset_window_end),
-            np.arange(peak_window_start, peak_window_end),
-            np.arange(outset_window_start, outset_window_end)
-        ])
-        
-        # print("ONSET:", onset_start_idx)
-        # print("PEAK:", peak_idx)
-        # print("OUTSET:", outset_start_idx)
+        val_indices = np.concatenate(
+            [
+                np.arange(onset_window_start, onset_window_end),
+                np.arange(peak_window_start, peak_window_end),
+                np.arange(outset_window_start, outset_window_end),
+            ]
+        )
 
         X_val = X_train[val_indices]
         y_val = y_train[val_indices]
-        
-        # Remove validation indices from training set
-        # print(val_indices.shape)
-        train_indices = np.concatenate([
-            np.arange(0, validation_period_start),
-            np.setdiff1d(np.arange(validation_period_start, validation_period_end), val_indices)
-        ])
+
+        # remove validation indices from training set
+        train_indices = np.concatenate(
+            [
+                np.arange(0, validation_period_start),
+                np.setdiff1d(
+                    np.arange(validation_period_start, validation_period_end),
+                    val_indices,
+                ),
+            ]
+        )
         X_train = X_train[train_indices]
         y_train = y_train[train_indices]
 
         if plot_validation:
             self.plot_validation_set(y_train, train_indices, y_val, val_indices)
 
-        # print("SHAPES")
-        # print(X_train.shape)
-        # print(X_val.shape)
-        # print(X_train.shape[0]+X_val.shape[0])
-
         # ensure no samples were lost during split
-        assert(X_train.shape[0]+X_val.shape[0] == season_start)
-        
+        assert X_train.shape[0] + X_val.shape[0] == season_start
+
         return X_train, y_train, X_val, y_val

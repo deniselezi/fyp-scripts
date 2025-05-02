@@ -16,20 +16,25 @@ for col in data.columns:
     c += 1
 
     data_vector = data[col].values.reshape(-1, 1)
-    
+
     similarity = np.corrcoef(ili_vector[:, 0], data_vector[:, 0])[0, 1]
 
     similarity_scores[col] = similarity
 
-sorted_columns = sorted(similarity_scores, key=similarity_scores.get, reverse=True)
+similarity_scores = sorted(similarity_scores.items(), key=lambda x: x[1], reverse=True)
+similarity_df = pd.DataFrame(similarity_scores, columns=["Query", "Correlation"])
+similarity_df.to_csv("../processed_data/pearson_correlation_scores.csv", index=False)
+print("Similarity scores saved to '../processed_data/similarity_scores.csv'.")
 
-top_cols = sorted_columns[:800]
+# sorted_columns = sorted(similarity_scores, key=similarity_scores.get, reverse=True)
 
-top_data = data[top_cols]
+# top_cols = sorted_columns[:800]
 
-print(top_data)
+# top_data = data[top_cols]
 
-# save data
-top_data.to_csv("../processed_data/final_800.csv", index=False)
+# print(top_data)
 
-print(f"Top columns saved")
+# # save data
+# top_data.to_csv("../processed_data/final_800.csv", index=False)
+
+# print(f"Top columns saved")
